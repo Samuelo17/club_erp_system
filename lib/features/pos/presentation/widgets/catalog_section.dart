@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'package:club_erp_system/features/pos/data/repositories_impl/catalog_repository_impl.dart';
+import 'package:club_erp_system/features/pos/presentation/providers/cart_provider.dart';
 import 'package:club_erp_system/features/pos/domain/entities/category.dart';
 import 'package:club_erp_system/features/pos/domain/entities/product.dart';
 import 'package:club_erp_system/features/pos/domain/repositories/catalog_repository.dart';
@@ -225,10 +227,33 @@ class _CatalogSectionState extends State<CatalogSection> {
       ),
       itemCount: _products.length,
       itemBuilder: (context, index) {
+        final product = _products[index];
         return ProductCard(
-          product: _products[index],
+          product: product,
           onTap: () {
-            // TODO: US-1.2 — Agregar producto al carrito
+            context.read<CartProvider>().addProduct(product);
+
+            // SnackBar breve y no intrusivo
+            ScaffoldMessenger.of(context)
+              ..clearSnackBars()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(
+                    '${product.name} agregado al carrito',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  duration: const Duration(milliseconds: 1000),
+                  behavior: SnackBarBehavior.floating,
+                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  backgroundColor: const Color(0xFF2D2D2D),
+                ),
+              );
           },
         );
       },
