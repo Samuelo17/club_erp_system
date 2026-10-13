@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:club_erp_system/features/exchange_rate/presentation/providers/exchange_rate_provider.dart';
 import 'package:club_erp_system/features/pos/presentation/providers/cart_provider.dart';
 import 'package:club_erp_system/features/pos/presentation/widgets/cart_bottom_sheet.dart';
 
@@ -84,15 +85,39 @@ class CartSummaryBar extends StatelessWidget {
 
                     const Spacer(),
 
-                    // Total monetario
-                    Text(
-                      'Total: \$ ${cart.totalAmount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: 0.3,
-                      ),
+                    // Total monetario con conversión dual USD / Bs.
+                    Consumer<ExchangeRateProvider>(
+                      builder: (context, rateProvider, _) {
+                        final totalUsd = cart.totalAmount;
+                        final hasRate = rateProvider.hasRate;
+                        final totalVes =
+                            hasRate ? totalUsd * rateProvider.rateValue : null;
+
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'Total: \$ ${totalUsd.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            if (totalVes != null)
+                              Text(
+                                'Bs. ${totalVes.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withValues(alpha: 0.92),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
                     ),
 
                     const SizedBox(width: 12),

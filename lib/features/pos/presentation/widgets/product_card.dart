@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import 'package:club_erp_system/features/exchange_rate/presentation/providers/exchange_rate_provider.dart';
 import 'package:club_erp_system/features/pos/domain/entities/product.dart';
 
 /// Tarjeta visual de un producto en el catálogo.
@@ -74,14 +76,32 @@ class ProductCard extends StatelessWidget {
 
               const SizedBox(height: 8),
 
-              // Precio en Naranja
-              Text(
-                '\$ ${product.currentPrice.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFFFF8C00),
-                ),
+              // Precio en Naranja con equivalente en Bs
+              Consumer<ExchangeRateProvider>(
+                builder: (context, rateProvider, _) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '\$ ${product.currentPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFFF8C00),
+                        ),
+                      ),
+                      if (rateProvider.hasRate)
+                        Text(
+                          'Bs. ${(product.currentPrice * rateProvider.rateValue).toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ],
           ),

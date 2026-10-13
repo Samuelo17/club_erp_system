@@ -6,6 +6,8 @@ import 'package:club_erp_system/core/local_db/powersync_helper.dart';
 import 'package:club_erp_system/core/auth/auth_provider.dart';
 import 'package:club_erp_system/features/auth/data/repositories_impl/auth_repository_impl.dart';
 import 'package:club_erp_system/features/auth/presentation/pages/login_page.dart';
+import 'package:club_erp_system/features/exchange_rate/data/repositories_impl/exchange_rate_repository_impl.dart';
+import 'package:club_erp_system/features/exchange_rate/presentation/providers/exchange_rate_provider.dart';
 import 'package:club_erp_system/features/pos/data/repositories_impl/order_repository_impl.dart';
 import 'package:club_erp_system/features/pos/presentation/providers/cart_provider.dart';
 
@@ -43,6 +45,11 @@ class ClubErpApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => CartProvider(
             orderRepository: OrderRepositoryImpl(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ExchangeRateProvider(
+            repository: ExchangeRateRepositoryImpl(),
           ),
         ),
       ],

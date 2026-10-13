@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:club_erp_system/features/exchange_rate/presentation/providers/exchange_rate_provider.dart';
 import 'package:club_erp_system/features/pos/domain/entities/cart_item.dart';
 import 'package:club_erp_system/features/pos/presentation/providers/cart_provider.dart';
 
@@ -85,13 +86,35 @@ class CartItemTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    '\$ ${cartItem.subtotal.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFFFF8C00),
-                    ),
+                  Consumer<ExchangeRateProvider>(
+                    builder: (context, rateProvider, _) {
+                      final hasRate = rateProvider.hasRate;
+                      final subtotalVes =
+                          hasRate ? cartItem.subtotal * rateProvider.rateValue : null;
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '\$ ${cartItem.subtotal.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFFFF8C00),
+                            ),
+                          ),
+                          if (subtotalVes != null)
+                            Text(
+                              'Bs. ${subtotalVes.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),

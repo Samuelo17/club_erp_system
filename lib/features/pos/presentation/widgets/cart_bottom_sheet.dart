@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:club_erp_system/core/auth/auth_provider.dart';
+import 'package:club_erp_system/features/exchange_rate/presentation/providers/exchange_rate_provider.dart';
 
 import 'package:club_erp_system/features/pos/presentation/providers/cart_provider.dart';
 import 'package:club_erp_system/features/pos/presentation/widgets/cart_item_tile.dart';
@@ -198,27 +199,52 @@ class CartBottomSheet extends StatelessWidget {
                     top: false,
                     child: Column(
                       children: [
-                        // Resumen del total
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Total de la Orden',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade500,
-                              ),
-                            ),
-                            Text(
-                              '\$ ${cart.totalAmount.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF1A1A1A),
-                              ),
-                            ),
-                          ],
+                        // Resumen del total (USD y Bs.)
+                        Consumer<ExchangeRateProvider>(
+                          builder: (context, rateProvider, _) {
+                            final totalUsd = cart.totalAmount;
+                            final hasRate = rateProvider.hasRate;
+                            final totalVes = hasRate
+                                ? totalUsd * rateProvider.rateValue
+                                : null;
+
+                            return Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  'Total de la Orden',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      '\$ ${totalUsd.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF1A1A1A),
+                                      ),
+                                    ),
+                                    if (totalVes != null)
+                                      Text(
+                                        '≈ Bs. ${totalVes.toStringAsFixed(2)}',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFFFF8C00),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            );
+                          },
                         ),
 
                         const SizedBox(height: 16),

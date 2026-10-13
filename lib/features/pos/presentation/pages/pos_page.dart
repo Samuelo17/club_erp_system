@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import 'package:club_erp_system/features/exchange_rate/presentation/pages/exchange_rate_dashboard_page.dart';
+import 'package:club_erp_system/features/exchange_rate/presentation/providers/exchange_rate_provider.dart';
 import 'package:club_erp_system/features/pos/presentation/widgets/catalog_section.dart';
 import 'package:club_erp_system/features/pos/presentation/widgets/cart_summary_bar.dart';
 
@@ -28,19 +31,97 @@ class PosPage extends StatelessWidget {
             Icon(
               Icons.point_of_sale_rounded,
               color: Color(0xFFFF8C00),
-              size: 26,
+              size: 24,
             ),
-            SizedBox(width: 10),
+            SizedBox(width: 8),
             Text(
               'Terminal POS',
               style: TextStyle(
                 color: Color(0xFF1A1A1A),
                 fontWeight: FontWeight.w700,
-                fontSize: 20,
+                fontSize: 18,
               ),
             ),
           ],
         ),
+        actions: [
+          Consumer<ExchangeRateProvider>(
+            builder: (context, rateProvider, _) {
+              final hasRate = rateProvider.hasRate;
+              final rateText = hasRate
+                  ? 'Bs. ${rateProvider.rateValue.toStringAsFixed(2)}'
+                  : 'Sin Tasa';
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Center(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ExchangeRateDashboardPage(),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: hasRate
+                              ? const Color(0xFFFF8C00).withValues(alpha: 0.10)
+                              : Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: hasRate
+                                ? const Color(0xFFFF8C00).withValues(alpha: 0.35)
+                                : Colors.amber.shade400,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.currency_exchange_rounded,
+                              size: 15,
+                              color: hasRate
+                                  ? const Color(0xFFFF8C00)
+                                  : Colors.amber.shade800,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              rateText,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: hasRate
+                                    ? const Color(0xFFFF8C00)
+                                    : Colors.amber.shade900,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 10,
+                              color: hasRate
+                                  ? const Color(0xFFFF8C00)
+                                  : Colors.amber.shade800,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(
