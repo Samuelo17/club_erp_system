@@ -111,7 +111,7 @@ class CartProvider extends ChangeNotifier {
   ///    de un `db.transaction()` atómico.
   /// 4. Si todo sale bien, vacía `_items` y retorna `true`.
   /// 5. Si falla, no modifica el carrito y retorna `false`.
-  Future<bool> processOrder() async {
+  Future<bool> processOrder(String employeeId) async {
     if (_items.isEmpty) return false;
 
     _isProcessing = true;
@@ -122,11 +122,11 @@ class CartProvider extends ChangeNotifier {
       final orderId = uuid.v4();
       final now = DateTime.now();
 
-      // Construir la entidad Order con constantes dummy del MVP
+      // Construir la entidad Order
       final order = Order(
         id: orderId,
-        employeeId: dummyEmployeeId,
-        cashSessionId: dummySessionId,
+        employeeId: employeeId,
+        cashSessionId: dummySessionId, // Todavía dummy para MVP
         totalAmount: totalAmount,
         status: 'PENDING',
         createdAt: now,

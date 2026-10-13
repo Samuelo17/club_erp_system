@@ -1,12 +1,13 @@
 -- =====================================================================
 -- MVP CLUB DE PISCINA - SISTEMA POS OFFLINE-FIRST (SUPABASE)
+-- VERSIÓN ESTRICTA: EL CLIENTE (FLUTTER) MANDA EN LA CREACIÓN DE IDs
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
 -- 1. MÓDULO DE USUARIOS Y ROLES
 -- ---------------------------------------------------------------------
 CREATE TABLE roles (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY, -- Generado en Flutter
     name VARCHAR(50) NOT NULL UNIQUE,
     description TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -15,9 +16,10 @@ CREATE TABLE roles (
 );
 
 CREATE TABLE employees (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY, -- Generado en Flutter
     role_id UUID NOT NULL REFERENCES roles(id),
     name VARCHAR(100) NOT NULL,
+    pin_code VARCHAR(10) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -28,7 +30,7 @@ CREATE TABLE employees (
 -- 2. MÓDULO DE CATÁLOGO Y EXTRAS (MENÚ)
 -- ---------------------------------------------------------------------
 CREATE TABLE categories (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY, -- Generado en Flutter
     name VARCHAR(100) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -37,7 +39,7 @@ CREATE TABLE categories (
 );
 
 CREATE TABLE products (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY, -- Generado en Flutter
     category_id UUID NOT NULL REFERENCES categories(id),
     name VARCHAR(150) NOT NULL,
     current_price NUMERIC(10, 2) NOT NULL, -- Siempre en base USD
@@ -48,7 +50,7 @@ CREATE TABLE products (
 );
 
 CREATE TABLE modifiers (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY, -- Generado en Flutter
     name VARCHAR(100) NOT NULL,
     price NUMERIC(10, 2) NOT NULL, -- Costo adicional del extra (USD)
     is_active BOOLEAN DEFAULT TRUE,
@@ -61,7 +63,7 @@ CREATE TABLE modifiers (
 -- 3. MÓDULO DE OPERACIONES BÁSICAS (CAJA Y TASA DE CAMBIO)
 -- ---------------------------------------------------------------------
 CREATE TABLE exchange_rates (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY, -- Generado en Flutter
     rate_value NUMERIC(15, 4) NOT NULL,
     created_by UUID NOT NULL REFERENCES employees(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -70,7 +72,7 @@ CREATE TABLE exchange_rates (
 );
 
 CREATE TABLE cash_sessions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY, -- Generado en Flutter
     employee_id UUID NOT NULL REFERENCES employees(id),
     opened_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     closed_at TIMESTAMPTZ,
@@ -84,7 +86,7 @@ CREATE TABLE cash_sessions (
 -- 4. MÓDULO DE VENTAS (EL CORAZÓN)
 -- ---------------------------------------------------------------------
 CREATE TABLE orders (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY, -- Generado en Flutter
     employee_id UUID NOT NULL REFERENCES employees(id), -- Quien tomó la orden
     cash_session_id UUID NOT NULL REFERENCES cash_sessions(id), -- A qué turno pertenece
     total_amount NUMERIC(15, 2) NOT NULL,
@@ -95,7 +97,7 @@ CREATE TABLE orders (
 );
 
 CREATE TABLE order_items (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY, -- Generado en Flutter
     order_id UUID NOT NULL REFERENCES orders(id),
     product_id UUID NOT NULL REFERENCES products(id),
     quantity INTEGER NOT NULL CHECK (quantity > 0),
@@ -106,7 +108,7 @@ CREATE TABLE order_items (
 );
 
 CREATE TABLE order_item_modifiers (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY, -- Generado en Flutter
     order_item_id UUID NOT NULL REFERENCES order_items(id),
     modifier_id UUID NOT NULL REFERENCES modifiers(id),
     quantity INTEGER NOT NULL DEFAULT 1,
@@ -120,7 +122,7 @@ CREATE TABLE order_item_modifiers (
 -- 5. MÓDULO DE PAGOS (CONCILIACIÓN Y MULTIMONEDA)
 -- ---------------------------------------------------------------------
 CREATE TABLE payment_methods (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY, -- Generado en Flutter
     name VARCHAR(50) NOT NULL, -- Ej: Efectivo Divisas, Efectivo Bs, Pago Móvil
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -129,7 +131,7 @@ CREATE TABLE payment_methods (
 );
 
 CREATE TABLE payments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY, -- Generado en Flutter
     order_id UUID NOT NULL REFERENCES orders(id),
     payment_method_id UUID NOT NULL REFERENCES payment_methods(id),
     amount NUMERIC(15, 2) NOT NULL, -- Monto recibido

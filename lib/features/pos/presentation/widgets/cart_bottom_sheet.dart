@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:club_erp_system/core/auth/auth_provider.dart';
 
 import 'package:club_erp_system/features/pos/presentation/providers/cart_provider.dart';
 import 'package:club_erp_system/features/pos/presentation/widgets/cart_item_tile.dart';
@@ -310,8 +311,11 @@ class CartBottomSheet extends StatelessWidget {
   ) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    // Obtenemos el empleado actual (el cajero)
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final employeeId = authProvider.currentUser?.id ?? '00000000-0000-0000-0000-000000000000'; // fallback seguro por si acaso
 
-    final success = await cart.processOrder();
+    final success = await cart.processOrder(employeeId);
 
     // Cerrar el BottomSheet
     if (navigator.canPop()) {
