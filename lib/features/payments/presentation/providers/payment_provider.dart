@@ -139,8 +139,10 @@ class PaymentProvider extends ChangeNotifier {
       final now = DateTime.now();
       final method = _selectedMethod!;
 
-      // Determinar el estado según el tipo de método de pago (AC US-2.2)
-      final status = method.requiresReference
+      // Regla de Negocio (US-3.1):
+      // Solo "Pago Móvil" requiere validación administrativa ('PENDING_VALIDATION').
+      // "Punto de Venta" y "Efectivo" quedan 'CONCILIADO' de inmediato.
+      final status = method.requiresOnlineValidation
           ? 'PENDING_VALIDATION'
           : 'CONCILIADO';
 
@@ -159,7 +161,7 @@ class PaymentProvider extends ChangeNotifier {
 
       await _repository.processPayment(payment);
 
-      // Si el pago es digital, se agrega a la lista reactiva de pendientes (US-3.1)
+      // Solo si el pago requiere validación administrativa se agrega a pendientes (US-3.1)
       if (status == 'PENDING_VALIDATION') {
         _pendingPayments.insert(0, payment);
       }
@@ -192,7 +194,8 @@ class PaymentProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _pendingPayments = await _repository.getPendingPayments();
+      final list = await _repository.getPendingPayments();
+      _pendingPayments = List<Payment>.from(list);
     } catch (e) {
       _errorMessage = 'Error al cargar pagos pendientes: $e';
       debugPrint('❌ [PaymentProvider] $_errorMessage');

@@ -4,8 +4,12 @@ import 'package:provider/provider.dart';
 
 import 'package:club_erp_system/core/local_db/powersync_helper.dart';
 import 'package:club_erp_system/core/auth/auth_provider.dart';
+import 'package:club_erp_system/features/analytics/data/repositories_impl/analytics_repository_impl.dart';
+import 'package:club_erp_system/features/analytics/presentation/providers/analytics_provider.dart';
 import 'package:club_erp_system/features/auth/data/repositories_impl/auth_repository_impl.dart';
 import 'package:club_erp_system/features/auth/presentation/pages/login_page.dart';
+import 'package:club_erp_system/features/cash_closure/data/repositories_impl/cash_session_repository_impl.dart';
+import 'package:club_erp_system/features/cash_closure/presentation/providers/cash_closure_provider.dart';
 import 'package:club_erp_system/features/exchange_rate/data/repositories_impl/exchange_rate_repository_impl.dart';
 import 'package:club_erp_system/features/exchange_rate/presentation/providers/exchange_rate_provider.dart';
 import 'package:club_erp_system/features/payments/data/repositories_impl/payment_repository_impl.dart';
@@ -58,6 +62,18 @@ class ClubErpApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => PaymentProvider(
             repository: PaymentRepositoryImpl(),
+          ),
+        ),
+        // US-3.2: Proveedor de analítica gerencial (KPIs en SQLite)
+        ChangeNotifierProvider(
+          create: (_) => AnalyticsProvider(
+            repository: AnalyticsRepositoryImpl(),
+          ),
+        ),
+        // US-3.4: Proveedor de arqueo y cierre de caja
+        ChangeNotifierProvider(
+          create: (_) => CashClosureProvider(
+            repository: CashSessionRepositoryImpl(),
           ),
         ),
       ],

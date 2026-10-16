@@ -11,6 +11,7 @@ class OrderItem {
   final String productId;
   final int quantity;
   final double unitPrice;
+  final String? productName;
 
   const OrderItem({
     required this.id,
@@ -18,5 +19,9 @@ class OrderItem {
     required this.productId,
     required this.quantity,
     required this.unitPrice,
+    this.productName,
   });
+
+  /// Subtotal de este ítem (cantidad * precio unitario congelado).
+  double get subtotal => quantity * unitPrice;
 }

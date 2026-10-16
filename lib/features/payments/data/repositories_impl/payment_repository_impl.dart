@@ -80,8 +80,19 @@ class PaymentRepositoryImpl implements PaymentRepository {
       conflictAlgorithm: ConflictAlgorithm.abort,
     );
 
+    // Actualizar el estado de la orden a COMPLETED
+    await db.update(
+      'orders',
+      {
+        'status': 'COMPLETED',
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [payment.orderId],
+    );
+
     debugPrint(
-      '✅ [PaymentRepo] Pago registrado: '
+      '✅ [PaymentRepo] Pago registrado y orden ${payment.orderId} marcada como COMPLETED: '
       '${payment.currency} ${payment.amount.toStringAsFixed(2)} '
       '| Método: ${payment.paymentMethodId} '
       '| Estado: ${payment.status} '
@@ -94,14 +105,15 @@ class PaymentRepositoryImpl implements PaymentRepository {
     final db = await SQLiteHelper.instance.database;
     await _ensurePaymentTablesAndSeed(db);
 
+    // Solo se traen para validación los pagos que NO sean Punto de Venta ni Efectivo (es decir, solo Pago Móvil)
     final results = await db.query(
       'payments',
-      where: 'status = ? AND deleted_at IS NULL',
-      whereArgs: ['PENDING_VALIDATION'],
+      where: 'status = ? AND payment_method_id != ? AND deleted_at IS NULL',
+      whereArgs: ['PENDING_VALIDATION', _idPuntoVenta],
       orderBy: 'created_at DESC',
     );
 
-    return results.map((row) => PaymentModel.fromMap(row)).toList();
+    return List<Payment>.from(results.map((row) => PaymentModel.fromMap(row)));
   }
 
   @override
@@ -166,6 +178,13 @@ class PaymentRepositoryImpl implements PaymentRepository {
         FOREIGN KEY (order_id) REFERENCES orders (id),
         FOREIGN KEY (payment_method_id) REFERENCES payment_methods (id)
       )
+    ''');
+
+    // Asegurar que los pagos de Punto de Venta estén marcados como CONCILIADO
+    await db.execute('''
+      UPDATE payments 
+      SET status = 'CONCILIADO' 
+      WHERE payment_method_id = '$_idPuntoVenta' AND status = 'PENDING_VALIDATION'
     ''');
 
     // Sembrar métodos de pago por defecto si la tabla está vacía

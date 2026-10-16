@@ -3,21 +3,25 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:club_erp_system/core/auth/auth_provider.dart';
+import 'package:club_erp_system/features/analytics/domain/entities/top_product_item.dart';
+import 'package:club_erp_system/features/analytics/presentation/providers/analytics_provider.dart';
 import 'package:club_erp_system/features/auth/presentation/pages/login_page.dart';
 import 'package:club_erp_system/features/exchange_rate/presentation/providers/exchange_rate_provider.dart';
 import 'package:club_erp_system/features/payments/domain/entities/payment.dart';
 import 'package:club_erp_system/features/payments/presentation/providers/payment_provider.dart';
 
 /// ============================================================================
-/// ADMIN DASHBOARD PAGE — Panel de la Encargada / Gerencia (US-3.1)
+/// ADMIN DASHBOARD PAGE — Panel de la Encargada / Gerencia (US-3.1 & US-3.2)
 /// ============================================================================
 ///
 /// Responsabilidades:
-/// 1. Validación de Pagos Online: Muestra los pagos en estado 'PENDING_VALIDATION'
-///    (Pago Móvil y Punto de Venta) con monto en VES y USD, Banco, Referencia y Hora.
-/// 2. Conciliación reactiva: Al presionar 'APROBAR', actualiza el estado a 'CONCILIADO'
-///    y desaparece de la lista inmediatamente.
-/// 3. Gestión de Tasa de Cambio (US-2.1): Permite fijar y monitorear la tasa activa.
+/// 1. Dashboard de Estadísticas Gerenciales (US-3.2):
+///    - KPIs del día: Órdenes Hoy (Negro), Ingreso USD (Verde oscuro), Ingreso VES (Naranja).
+///    - Top 3 de productos más vendidos hoy con barras de progreso.
+/// 2. Validación de Pagos Online (US-3.1):
+///    - Muestra pagos en 'PENDING_VALIDATION' (Pago Móvil y Punto de Venta).
+///    - Conciliación reactiva al presionar 'APROBAR'.
+/// 3. Gestión de Tasa de Cambio (US-2.1): Permite fijar y auditar la tasa activa.
 /// 4. Cierre de sesión y control de acceso restringido a Encargada.
 /// ============================================================================
 class AdminDashboardPage extends StatefulWidget {
@@ -37,9 +41,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // Cargar pagos pendientes al entrar a la pantalla
+    // Cargar pagos pendientes y estadísticas del día al entrar a la pantalla
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PaymentProvider>().loadPendingPayments();
+      context.read<AnalyticsProvider>().loadTodayAnalytics();
     });
   }
 
@@ -84,6 +89,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
     if (!mounted) return;
 
     if (success) {
+      // Refrescar reactivamente las estadísticas del día
+      context.read<AnalyticsProvider>().loadTodayAnalytics();
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -225,9 +233,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
         actions: [
           // Botón Refrescar
           IconButton(
-            tooltip: 'Actualizar lista',
+            tooltip: 'Actualizar datos',
             icon: const Icon(Icons.refresh_rounded, color: Color(0xFF374151)),
-            onPressed: () => paymentProvider.loadPendingPayments(),
+            onPressed: () {
+              paymentProvider.loadPendingPayments();
+              context.read<AnalyticsProvider>().loadTodayAnalytics();
+            },
           ),
           // Botón Cerrar Sesión
           Padding(
@@ -245,22 +256,24 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
           unselectedLabelColor: const Color(0xFF6B7280),
           indicatorColor: const Color(0xFFFF8C00),
           indicatorWeight: 3,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+          labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
           tabs: [
             Tab(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.verified_outlined, size: 18),
-                  const SizedBox(width: 6),
-                  const Text('Validación de Pagos'),
+                  const Icon(Icons.verified_outlined, size: 16),
+                  const SizedBox(width: 4),
+                  const Text('Validar Pagos'),
                   if (paymentProvider.pendingCount > 0) ...[
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 5),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEF4444),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         '${paymentProvider.pendingCount}',
@@ -278,10 +291,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
             const Tab(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.currency_exchange_rounded, size: 18),
-                  SizedBox(width: 6),
-                  Text('Tasa de Cambio'),
+                  Icon(Icons.currency_exchange_rounded, size: 16),
+                  SizedBox(width: 4),
+                  Text('Tasa del Día'),
                 ],
               ),
             ),
@@ -291,7 +305,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
       body: TabBarView(
         controller: _tabController,
         children: [
-          // PESTAÑA 1: Validación de Pagos Móviles (US-3.1)
+          // PESTAÑA 1: Resumen del Día (US-3.2) + Validación de Pagos Móviles (US-3.1)
           _buildValidationTab(paymentProvider),
 
           // PESTAÑA 2: Tasa de Cambio (US-2.1)
@@ -302,96 +316,688 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
   }
 
   // ===========================================================================
-  // PESTAÑA 1: VALIDACIÓN DE PAGOS DIGITALES (US-3.1)
+  // PESTAÑA 1: RESUMEN DEL DÍA (US-3.2) + VALIDACIÓN DE PAGOS DIGITALES (US-3.1)
   // ===========================================================================
   Widget _buildValidationTab(PaymentProvider provider) {
-    if (provider.isLoadingPending) {
-      return const Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFFFF8C00),
-        ),
-      );
-    }
-
-    final pending = provider.pendingPayments;
+    final analyticsProvider = context.watch<AnalyticsProvider>();
 
     return RefreshIndicator(
       color: const Color(0xFFFF8C00),
-      onRefresh: () => provider.loadPendingPayments(),
-      child: pending.isEmpty
-          ? _buildEmptyPendingState()
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: pending.length,
-              itemBuilder: (context, index) {
-                final payment = pending[index];
-                return _buildPendingPaymentCard(payment, provider);
-              },
+      onRefresh: () async {
+        await Future.wait([
+          provider.loadPendingPayments(),
+          analyticsProvider.loadTodayAnalytics(),
+        ]);
+      },
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          // -------------------------------------------------------------------
+          // SECCIÓN SUPERIOR: RESUMEN DEL DÍA (US-3.2)
+          // -------------------------------------------------------------------
+          _buildDailySummarySection(analyticsProvider),
+
+          const SizedBox(height: 24),
+
+          // -------------------------------------------------------------------
+          // SECCIÓN INFERIOR: BANDEJA DE VALIDACIÓN DE PAGOS (US-3.1)
+          // -------------------------------------------------------------------
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(
+                    Icons.verified_user_outlined,
+                    size: 18,
+                    color: Color(0xFF111827),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Validación de Pagos',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ],
+              ),
+              if (provider.pendingCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
+                  ),
+                  child: Text(
+                    '${provider.pendingCount} pendientes',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFB45309),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          if (provider.isLoadingPending)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 36),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFFFF8C00),
+                ),
+              ),
+            )
+          else if (provider.pendingPayments.isEmpty)
+            _buildEmptyPendingState()
+          else
+            ...provider.pendingPayments.map(
+              (payment) => _buildPendingPaymentCard(payment, provider),
             ),
+          
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 
-  Widget _buildEmptyPendingState() {
-    return ListView(
+  // ---------------------------------------------------------------------------
+  // WIDGET: SECCIÓN "RESUMEN DEL DÍA" (US-3.2)
+  // ---------------------------------------------------------------------------
+  Widget _buildDailySummarySection(AnalyticsProvider analytics) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 80),
-        Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+        // Encabezado de la Sección Resumen del Día
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF8C00).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.insights_rounded,
+                    size: 16,
+                    color: Color(0xFFFF8C00),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Resumen del Día',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.calendar_today_rounded, size: 11, color: Color(0xFF6B7280)),
+                  SizedBox(width: 4),
+                  Text(
+                    'Hoy',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF4B5563),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // Estado de Carga / Error / Datos
+        if (analytics.isLoading)
+          _buildSummaryLoadingState()
+        else if (analytics.errorMessage != null)
+          _buildSummaryErrorState(analytics)
+        else ...[
+          // Grid / Column responsivo con las 3 Tarjetas de KPIs solicitadas
+          _buildKpiCards(analytics),
+
+          const SizedBox(height: 14),
+
+          // Tarjeta de Top 3 Productos Más Vendidos
+          _buildTopProductsCard(analytics.summary.topProducts),
+        ],
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // WIDGET: ESTADO DE CARGA ELEGANTE PARA EL RESUMEN DEL DÍA
+  // ---------------------------------------------------------------------------
+  Widget _buildSummaryLoadingState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: Color(0xFFFF8C00),
+            ),
+          ),
+          SizedBox(height: 12),
+          Text(
+            'Calculando métricas del día...',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // WIDGET: ESTADO DE ERROR DE ANALYTICS
+  // ---------------------------------------------------------------------------
+  Widget _buildSummaryErrorState(AnalyticsProvider analytics) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFCA5A5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              analytics.errorMessage ?? 'Error al cargar resumen del día.',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF991B1B)),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFFDC2626)),
+            onPressed: () => analytics.loadTodayAnalytics(),
+            tooltip: 'Reintentar',
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // WIDGET: TARJETAS DE KPIS (DISEÑO MÓVIL RESPONSIVO)
+  // - Tarjeta 1: "Órdenes Hoy" (Texto grande, color Negro #111827).
+  // - Tarjeta 2: "Ingreso USD" (Texto grande, color Verde oscuro #047857).
+  // - Tarjeta 3: "Ingreso VES" (Texto grande, color Naranja #EA580C).
+  // ---------------------------------------------------------------------------
+  Widget _buildKpiCards(AnalyticsProvider analytics) {
+    final summary = analytics.summary;
+
+    return Column(
+      children: [
+        // Fila Superior (2 Columnas): Órdenes Hoy + Ingreso USD
+        Row(
+          children: [
+            // TARJETA 1: Órdenes Hoy (Negro)
+            Expanded(
+              child: _buildSingleKpiCard(
+                title: 'Órdenes Hoy',
+                value: '${summary.ordersCount}',
+                valueColor: const Color(0xFF111827),
+                icon: Icons.receipt_long_rounded,
+                iconBg: const Color(0xFFF3F4F6),
+                iconColor: const Color(0xFF374151),
+                subtitle: 'completadas',
+              ),
+            ),
+            const SizedBox(width: 10),
+            // TARJETA 2: Ingreso USD (Verde oscuro)
+            Expanded(
+              child: _buildSingleKpiCard(
+                title: 'Ingreso USD',
+                value: '\$${summary.totalUsd.toStringAsFixed(2)}',
+                valueColor: const Color(0xFF047857),
+                icon: Icons.attach_money_rounded,
+                iconBg: const Color(0xFFDCFCE7),
+                iconColor: const Color(0xFF16A34A),
+                subtitle: 'total ventas',
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 10),
+
+        // Fila Inferior (Ancho Completo): Ingreso VES (Naranja)
+        _buildHorizontalKpiCard(
+          title: 'Ingreso VES',
+          value: 'Bs. ${summary.totalVes.toStringAsFixed(2)}',
+          valueColor: const Color(0xFFEA580C),
+          icon: Icons.payments_rounded,
+          iconBg: const Color(0xFFFFEDD5),
+          iconColor: const Color(0xFFEA580C),
+          subtitle: 'pagos en bolívares',
+        ),
+      ],
+    );
+  }
+
+  // Tarjeta de KPI individual compacta
+  Widget _buildSingleKpiCard({
+    required String title,
+    required String value,
+    required Color valueColor,
+    required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
               Container(
-                width: 80,
-                height: 80,
+                padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  color: iconBg,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.check_circle_rounded,
-                  color: Color(0xFF10B981),
-                  size: 48,
-                ),
+                child: Icon(icon, size: 14, color: iconColor),
               ),
-              const SizedBox(height: 20),
-              const Text(
-                '¡Todo Conciliado!',
+            ],
+          ),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: valueColor,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF9CA3AF),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Tarjeta de KPI horizontal para montos largos
+  Widget _buildHorizontalKpiCard({
+    required String title,
+    required String value,
+    required Color valueColor,
+    required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
+    required String subtitle,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 18, color: iconColor),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF9CA3AF),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                value,
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF111827),
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: valueColor,
+                  letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 8),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 40),
-                child: Text(
-                  'No hay pagos móviles ni puntos de venta pendientes de validación bancaria.',
-                  textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // WIDGET: SECCIÓN "MÁS VENDIDOS HOY" (TOP 3 PRODUCTOS)
+  // ---------------------------------------------------------------------------
+  Widget _buildTopProductsCard(List<TopProductItem> topProducts) {
+    final maxQuantity = topProducts.isEmpty
+        ? 1
+        : topProducts.map((p) => p.quantity).fold<int>(0, (prev, curr) => curr > prev ? curr : prev);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Cabecera de la tarjeta
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.local_fire_department_rounded,
+                      size: 16,
+                      color: Color(0xFFD97706),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Más vendidos hoy',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Top 3',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
                     color: Color(0xFF6B7280),
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF374151),
-                  elevation: 1,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    side: const BorderSide(color: Color(0xFFE5E7EB)),
-                  ),
-                ),
-                onPressed: () => context.read<PaymentProvider>().loadPendingPayments(),
-                icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Comprobar de nuevo'),
-              ),
             ],
           ),
-        ),
-      ],
+
+          const SizedBox(height: 14),
+
+          if (topProducts.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 14),
+              child: Center(
+                child: Text(
+                  'No hay ventas registradas aún hoy.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF9CA3AF),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            )
+          else
+            Column(
+              children: topProducts.asMap().entries.map((entry) {
+                final index = entry.key;
+                final product = entry.value;
+                final ratio = maxQuantity > 0
+                    ? (product.quantity / maxQuantity)
+                    : 0.0;
+                final isLast = index == topProducts.length - 1;
+
+                return Padding(
+                  padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 20,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              '${index + 1}.',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFFFF8C00),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              product.name,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1F2937),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${product.quantity} ${product.quantity == 1 ? "und" : "unds"}',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF4B5563),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: ratio.clamp(0.08, 1.0),
+                          minHeight: 6,
+                          backgroundColor: const Color(0xFFF3F4F6),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color(0xFFFF8C00),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // WIDGET: ESTADO VACÍO CUANDO NO HAY PAGOS PENDIENTES
+  // ---------------------------------------------------------------------------
+  Widget _buildEmptyPendingState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.check_circle_rounded,
+              color: Color(0xFF10B981),
+              size: 36,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            '¡Todo Conciliado!',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'No hay pagos pendientes de validación bancaria.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

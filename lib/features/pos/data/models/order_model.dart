@@ -40,4 +40,16 @@ class OrderModel extends Order {
       createdAt: order.createdAt,
     );
   }
+
+  /// Deserializa una fila de SQLite a [OrderModel].
+  factory OrderModel.fromMap(Map<String, dynamic> map) {
+    return OrderModel(
+      id: map['id'] as String,
+      employeeId: map['employee_id'] as String,
+      cashSessionId: map['cash_session_id'] as String,
+      totalAmount: (map['total_amount'] as num).toDouble(),
+      status: map['status'] as String? ?? 'PENDING',
+      createdAt: DateTime.parse(map['created_at'] as String),
+    );
+  }
 }

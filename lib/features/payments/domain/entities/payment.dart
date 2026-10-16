@@ -20,7 +20,8 @@ class Payment {
   final double exchangeRate; // Tasa congelada al momento del pago
   final String? referenceNumber; // Referencia del banco (Pago Móvil / POS)
   final String? bankName; // Banco emisor (Pago Móvil / POS)
-  final String status; // 'PENDING_VALIDATION' | 'APROBADO_VISUALMENTE' | 'CONCILIADO'
+  final String
+  status; // 'PENDING_VALIDATION' | 'APROBADO_VISUALMENTE' | 'CONCILIADO'
   final DateTime createdAt;
 
   const Payment({
@@ -37,10 +38,24 @@ class Payment {
   });
 
   /// Monto equivalente en USD calculado con la tasa congelada del pago.
-  double get amountInUsd =>
-      currency == 'USD' ? amount : (exchangeRate > 0 ? amount / exchangeRate : 0.0);
+  double get amountInUsd => currency == 'USD'
+      ? amount
+      : (exchangeRate > 0 ? amount / exchangeRate : 0.0);
 
   /// Monto equivalente en VES calculado con la tasa congelada del pago.
-  double get amountInVes =>
-      currency == 'VES' ? amount : amount * exchangeRate;
+  double get amountInVes => currency == 'VES' ? amount : amount * exchangeRate;
+
+  /// ID corto de la orden para visualización rápida en UI (ej: "8A3F2C10").
+  String get orderShortId =>
+      orderId.length >= 8 ? orderId.substring(0, 8).toUpperCase() : orderId.toUpperCase();
+
+  /// Hora formateada de la transacción (ej: "10:45 AM").
+  String get formattedTime {
+    final hour = createdAt.hour > 12
+        ? createdAt.hour - 12
+        : (createdAt.hour == 0 ? 12 : createdAt.hour);
+    final minute = createdAt.minute.toString().padLeft(2, '0');
+    final period = createdAt.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $period';
+  }
 }

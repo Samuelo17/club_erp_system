@@ -12,6 +12,7 @@ class OrderItemModel extends OrderItem {
     required super.productId,
     required super.quantity,
     required super.unitPrice,
+    super.productName,
   });
 
   /// Convierte la entidad en un [Map] compatible con `db.insert('order_items', ...)`.
@@ -27,6 +28,18 @@ class OrderItemModel extends OrderItem {
     };
   }
 
+  /// Deserializa una fila de SQLite (con posible JOIN de products) a [OrderItemModel].
+  factory OrderItemModel.fromMap(Map<String, dynamic> map) {
+    return OrderItemModel(
+      id: map['id'] as String,
+      orderId: map['order_id'] as String,
+      productId: map['product_id'] as String,
+      quantity: (map['quantity'] as num).toInt(),
+      unitPrice: (map['unit_price'] as num).toDouble(),
+      productName: (map['product_name'] ?? map['name']) as String?,
+    );
+  }
+
   /// Crea un [OrderItemModel] directamente desde una entidad [OrderItem] de dominio.
   factory OrderItemModel.fromEntity(OrderItem item) {
     return OrderItemModel(
@@ -35,6 +48,7 @@ class OrderItemModel extends OrderItem {
       productId: item.productId,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
+      productName: item.productName,
     );
   }
 }

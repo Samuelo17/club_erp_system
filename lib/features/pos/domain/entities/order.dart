@@ -21,4 +21,11 @@ class Order {
     this.status = 'PENDING',
     required this.createdAt,
   });
+
+  /// ID corto para visualización rápida en la interfaz de caja (ej. '...a4f9b2').
+  String get shortId {
+    if (id.length <= 8) return id;
+    final lastChars = id.substring(id.length - 6);
+    return '...$lastChars';
+  }
 }

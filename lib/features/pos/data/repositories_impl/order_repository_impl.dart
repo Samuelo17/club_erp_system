@@ -34,4 +34,51 @@ class OrderRepositoryImpl implements OrderRepository {
       );
     });
   }
+
+  @override
+  Future<List<Order>> getTodayCompletedOrders() async {
+    final db = await SQLiteHelper.instance.database;
+    // Fecha local del cliente en formato YYYY-MM-DD
+    final todayDateStr = DateTime.now().toIso8601String().substring(0, 10);
+
+    // Consulta en SQLite ignorando la hora (comparación estricta por fecha YYYY-MM-DD)
+    final results = await db.rawQuery('''
+      SELECT DISTINCT o.*
+      FROM orders o
+      LEFT JOIN payments p ON o.id = p.order_id
+      WHERE o.deleted_at IS NULL
+        AND (o.status = 'COMPLETED' OR p.id IS NOT NULL OR o.status != 'CANCELED')
+        AND (
+          date(o.created_at) = ?
+          OR date(o.created_at) = date('now', 'localtime')
+        )
+      ORDER BY o.created_at DESC
+    ''', [todayDateStr]);
+
+    return results.map((row) => OrderModel.fromMap(row)).toList();
+  }
+
+  @override
+  Future<List<OrderItem>> getOrderItemsWithDetails(String orderId) async {
+    final db = await SQLiteHelper.instance.database;
+
+    // JOIN entre order_items y products para obtener el nombre del producto
+    final results = await db.rawQuery('''
+      SELECT 
+        oi.id,
+        oi.order_id,
+        oi.product_id,
+        oi.quantity,
+        oi.unit_price,
+        oi.created_at,
+        COALESCE(p.name, 'Producto') AS product_name
+      FROM order_items oi
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = ?
+        AND oi.deleted_at IS NULL
+      ORDER BY oi.created_at ASC
+    ''', [orderId]);
+
+    return results.map((row) => OrderItemModel.fromMap(row)).toList();
+  }
 }
