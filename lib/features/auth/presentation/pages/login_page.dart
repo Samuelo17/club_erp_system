@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/auth/auth_provider.dart';
+import '../../../admin/presentation/pages/admin_dashboard_page.dart';
 import '../../../pos/presentation/pages/pos_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -21,8 +22,8 @@ class _LoginPageState extends State<LoginPage> {
         _pin += digit;
       });
       
-      // Intentar login automáticamente al llegar a 4 o 6 dígitos (dependiendo del estándar de tu local)
-      if (_pin.length >= 4) {
+      // Intentar login automáticamente al llegar a 4 dígitos
+      if (_pin.length == 4) {
         _attemptLogin();
       }
     }
@@ -42,13 +43,31 @@ class _LoginPageState extends State<LoginPage> {
     // Evitamos doble submit
     if (authProvider.isLoading) return;
 
-    final success = await authProvider.login(_pin);
+    final enteredPin = _pin;
+    final success = await authProvider.login(enteredPin);
     
     if (!mounted) return;
     
     if (success) {
-      // Redirigir al POS
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const PosPage()));
+      final user = authProvider.currentUser;
+      final isEncargada = user?.isEncargada ?? (enteredPin == '5678');
+
+      setState(() {
+        _pin = '';
+      });
+
+      // TAREA 1: Ruteo estricto por Rol / PIN
+      if (isEncargada) {
+        // PIN 5678 -> Rol: Encargada -> Navega a AdminDashboardPage
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
+        );
+      } else {
+        // PIN 1234 -> Rol: Cajera -> Navega a PosPage
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const PosPage()),
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

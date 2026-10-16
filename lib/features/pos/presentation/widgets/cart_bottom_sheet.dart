@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:club_erp_system/core/auth/auth_provider.dart';
 import 'package:club_erp_system/features/exchange_rate/presentation/providers/exchange_rate_provider.dart';
+import 'package:club_erp_system/features/payments/data/repositories_impl/payment_repository_impl.dart';
+import 'package:club_erp_system/features/payments/presentation/widgets/checkout_bottom_sheet.dart';
 
 import 'package:club_erp_system/features/pos/presentation/providers/cart_provider.dart';
 import 'package:club_erp_system/features/pos/presentation/widgets/cart_item_tile.dart';
@@ -328,9 +330,12 @@ class CartBottomSheet extends StatelessWidget {
 
   /// Maneja el flujo de procesar la orden con feedback visual.
   ///
-  /// 1. Llama a [CartProvider.processOrder] (persiste en SQLite).
-  /// 2. Cierra el BottomSheet.
-  /// 3. Muestra SnackBar de éxito (verde) o error (rojo).
+  /// **Flujo US-1.3 + US-2.2**:
+  /// 1. Llama a [CartProvider.processOrder] (persiste la orden en SQLite).
+  /// 2. Cierra el BottomSheet del carrito.
+  /// 3. Si la orden se creó correctamente, abre inmediatamente el
+  ///    [CheckoutBottomSheet] para registrar el pago.
+  /// 4. Si falla, muestra SnackBar de error sin cerrar el carrito.
   Future<void> _handleProcessOrder(
     BuildContext context,
     CartProvider cart,
@@ -341,39 +346,24 @@ class CartBottomSheet extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final employeeId = authProvider.currentUser?.id ?? '00000000-0000-0000-0000-000000000000'; // fallback seguro por si acaso
 
+    // Guardar el total antes de procesar (el cart se limpia al éxito)
+    final totalUsd = cart.totalAmount;
+
     final success = await cart.processOrder(employeeId);
 
-    // Cerrar el BottomSheet
-    if (navigator.canPop()) {
-      navigator.pop();
-    }
+    if (!context.mounted) return;
 
     if (success) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 20),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Orden generada con éxito. Lista para pago.',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFF2E7D32),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          margin: const EdgeInsets.all(16),
-          duration: const Duration(seconds: 3),
-        ),
+      // Cerrar el BottomSheet del carrito
+      if (navigator.canPop()) navigator.pop();
+
+      // Abrir el modal de cobro inmediatamente (US-2.2)
+      // cart.lastOrderId es el UUID de la orden recién creada en SQLite.
+      await CheckoutBottomSheet.show(
+        context: context,
+        orderId: cart.lastOrderId ?? 'order-id-unavailable',
+        totalUsd: totalUsd,
+        paymentRepository: PaymentRepositoryImpl(),
       );
     } else {
       messenger.showSnackBar(

@@ -22,6 +22,10 @@ class CartProvider extends ChangeNotifier {
   /// Indica si hay una operación de persistencia en curso.
   bool _isProcessing = false;
 
+  /// UUID de la última orden creada exitosamente.
+  /// Disponible justo después de que [processOrder] retorne `true`.
+  String? _lastOrderId;
+
   CartProvider({required OrderRepository orderRepository})
       // ignore: prefer_initializing_formals
       : _orderRepository = orderRepository;
@@ -45,6 +49,11 @@ class CartProvider extends ChangeNotifier {
 
   /// `true` mientras se persiste la orden en SQLite.
   bool get isProcessing => _isProcessing;
+
+  /// UUID de la última orden creada exitosamente (null si aún no hay ninguna).
+  ///
+  /// Usar este valor en [CheckoutBottomSheet] para enlazar el pago con la orden.
+  String? get lastOrderId => _lastOrderId;
 
   /// Agrega un producto al carrito.
   ///
@@ -146,7 +155,8 @@ class CartProvider extends ChangeNotifier {
       // Persistir atómicamente en SQLite
       await _orderRepository.createOrder(order, orderItems);
 
-      // Éxito: vaciar carrito
+      // Éxito: guardar el último orderId y vaciar carrito
+      _lastOrderId = orderId;
       _items.clear();
       _isProcessing = false;
       notifyListeners();

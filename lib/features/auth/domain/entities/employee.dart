@@ -26,4 +26,12 @@ class Employee {
       isActive: map['is_active'] == 1 || map['is_active'] == true,
     );
   }
+
+  /// Retorna `true` si el empleado tiene rol de Encargada / Gerencia o PIN 5678.
+  bool get isEncargada =>
+      role?.name.toUpperCase() == 'ENCARGADA' || pinCode == '5678';
+
+  /// Retorna `true` si el empleado tiene rol de Cajera o PIN 1234.
+  bool get isCajera =>
+      role?.name.toUpperCase() == 'CAJERA' || pinCode == '1234';
 }

@@ -8,6 +8,8 @@ import 'package:club_erp_system/features/auth/data/repositories_impl/auth_reposi
 import 'package:club_erp_system/features/auth/presentation/pages/login_page.dart';
 import 'package:club_erp_system/features/exchange_rate/data/repositories_impl/exchange_rate_repository_impl.dart';
 import 'package:club_erp_system/features/exchange_rate/presentation/providers/exchange_rate_provider.dart';
+import 'package:club_erp_system/features/payments/data/repositories_impl/payment_repository_impl.dart';
+import 'package:club_erp_system/features/payments/presentation/providers/payment_provider.dart';
 import 'package:club_erp_system/features/pos/data/repositories_impl/order_repository_impl.dart';
 import 'package:club_erp_system/features/pos/presentation/providers/cart_provider.dart';
 
@@ -50,6 +52,12 @@ class ClubErpApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => ExchangeRateProvider(
             repository: ExchangeRateRepositoryImpl(),
+          ),
+        ),
+        // US-2.2: Proveedor de pagos (métodos + estado del formulario de cobro)
+        ChangeNotifierProvider(
+          create: (_) => PaymentProvider(
+            repository: PaymentRepositoryImpl(),
           ),
         ),
       ],
